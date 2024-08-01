@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>m3u8 Video Player</title>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+</head>
+<body>
+    <video id="video" controls></video>
+    <script>
+        if (Hls.isSupported()) {
+            var video = document.getElementById('video');
+            var hls = new Hls();
+            hls.loadSource('https://wxhls.mcloud.139.com/hls/M068756c0040acdfc2749d3e70b04f183d/playlist.m3u8?ci=1O11qRwo6JnS30120240618191318nv2&fileSize=45366705&usersiteid=usersite-s');
+            hls.attachMedia(video);
+            hls.on(Hls.Events.MANIFEST_PARSED, function () {
+                video.play();
+            });
+        }
+        // HLS.js is not supported on platforms that do not have Media Source Extensions (MSE) enabled.
+        // When the browser supports the basic HTML5 video tag, the following can be used:
+        else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+            video.src = 'https://wxhls.mcloud.139.com/hls/M068756c0040acdfc2749d3e70b04f183d/playlist.m3u8?ci=1O11qRwo6JnS30120240618191318nv2&fileSize=45366705&usersiteid=usersite-s';
+            video.addEventListener('loadedmetadata', function () {
+                video.play();
+            });
+        }
+    </script>
+</body>
+</html>
