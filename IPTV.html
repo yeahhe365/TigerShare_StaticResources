@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IPTV 播放器 (支持H.264)</title>
+    <link href="https://vjs.zencdn.net/7.20.3/video-js.min.css" rel="stylesheet">
+    <script src="https://vjs.zencdn.net/7.20.3/video.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #f0f0f0; }
+        h1 { color: #333; }
+        #channel-list { float: left; width: 40%; height: 600px; overflow-y: auto; background-color: white; border: 1px solid #ddd; }
+        #channel-list button { display: block; width: 100%; padding: 10px; border: none; background-color: white; text-align: left; cursor: pointer; border-bottom: 1px solid #eee; }
+        #channel-list button:hover { background-color: #f0f0f0; }
+        #player-container { float: right; width: 55%; }
+        .video-js { width: 100%; height: 400px; }
+        .channel-item { display: flex; align-items: center; }
+        .channel-icon { width: 100px; height: 60px; margin-right: 10px; object-fit: contain; }
+        .channel-info { display: flex; flex-direction: column; }
+        .channel-name { font-weight: bold; }
+        .channel-description { font-size: 0.8em; color: #666; }
+    </style>
+</head>
+<body>
+    <h1>IPTV 播放器 (支持H.264)</h1>
+    <div id="channel-list"></div>
+    <div id="player-container">
+        <video-js id="my-video" class="video-js" controls preload="auto" data-setup='{"techOrder": ["html5"]}'>
+            <p class="vjs-no-js">
+                To view this video please enable JavaScript, and consider upgrading to a web browser that
+                <a href="https://videojs.com/html5-video-support/" target="_blank">supports HTML5 video</a>
+            </p>
+        </video-js>
+    </div>
+
+    <script>
+        const playlistUrl = 'https://raw.githubusercontent.com/hujingguang/ChinaIPTV/main/cnTV_AutoUpdate.m3u8';
+        const channelList = document.getElementById('channel-list');
+        const player = videojs('my-video', {
+            html5: {
+                hls: {
+                    overrideNative: true
+                }
+            }
+        });
+
+        function isValidIpv4Url(string) {
+            try {
+                const url = new URL(string);
+                return !string.includes('[') && !string.includes(']');
+            } catch (_) {
+                return false;
+            }
+        }
+
+        function parseM3ULine(line) {
+            if (line.startsWith('http://') || line.startsWith('https://')) {
+                return line.trim();
+            }
+            return null;
+        }
+
+        function extractTvgInfo(extinf) {
+            const logoMatch = extinf.match(/tvg-logo="([^"]+)"/);
+            const nameMatch = extinf.match(/tvg-name="([^"]+)"/);
+            return {
+                logo: logoMatch ? logoMatch[1] : null,
+                name: nameMatch ? nameMatch[1] : null
+            };
+        }
+
+        fetch(playlistUrl)
+            .then(response => response.text())
+            .then(data => {
+                const lines = data.split('\n');
+                for (let i = 0; i < lines.length; i++) {
+                    if (lines[i].startsWith('#EXTINF')) {
+                        const tvgInfo = extractTvgInfo(lines[i]);
+                        const title = lines[i].split(',')[1];
+                        const url = parseM3ULine(lines[i+1]);
+                        if (url && isValidIpv4Url(url)) {
+                            const button = document.createElement('button');
+                            const channelItem = document.createElement('div');
+                            channelItem.className = 'channel-item';
+
+                            if (tvgInfo.logo) {
+                                const img = document.createElement('img');
+                                img.src = tvgInfo.logo;
+                                img.className = 'channel-icon';
+                                img.onerror = function() { this.style.display = 'none'; };
+                                channelItem.appendChild(img);
+                            }
+
+                            const infoDiv = document.createElement('div');
+                            infoDiv.className = 'channel-info';
+
+                            const nameSpan = document.createElement('span');
+                            nameSpan.className = 'channel-name';
+                            nameSpan.textContent = tvgInfo.name || title;
+                            infoDiv.appendChild(nameSpan);
+
+                            if (tvgInfo.name && tvgInfo.name !== title) {
+                                const descSpan = document.createElement('span');
+                                descSpan.className = 'channel-description';
+                                descSpan.textContent = title;
+                                infoDiv.appendChild(descSpan);
+                            }
+
+                            channelItem.appendChild(infoDiv);
+                            button.appendChild(channelItem);
+                            button.onclick = function() {
+                                player.src({
+                                    type: 'application/x-mpegURL',
+                                    src: url
+                                });
+                                player.play();
+                            };
+                            channelList.appendChild(button);
+                        }
+                    }
+                }
+            })
+            .catch(error => console.error('Error:', error));
+    </script>
+</body>
+</html>
